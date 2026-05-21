@@ -9,19 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-
-const statusFilters: Array<{ label: string; value: 'all' | StatusType }> = [
-  { label: 'Todos', value: 'all' },
-  { label: 'Pedido', value: 'pedido' },
-  { label: 'Imprimiendo', value: 'imprimiendo' },
-  { label: 'Listo', value: 'listo' },
-]
-
-const priorityFilters: Array<{ label: string; value: 'all' | OrderPriority }> = [
-  { label: 'Todas', value: 'all' },
-  { label: 'Normal', value: 'normal' },
-  { label: 'Urgente', value: 'urgente' },
-]
+import { NativeSelect } from '@/components/ui/native-select'
+import { WorkspaceShell } from '@/components/layout/workspace-shell'
 
 export function OrderList() {
   const navigate = useNavigate()
@@ -57,101 +46,163 @@ export function OrderList() {
   const pendingCount = orders.filter((order: Order) => order.status === 'pedido').length
   const printingCount = orders.filter((order: Order) => order.status === 'imprimiendo').length
   const readyCount = orders.filter((order: Order) => order.status === 'listo').length
+  const urgentCount = orders.filter((order: Order) => order.priority === 'urgente').length
+
+  const resetFilters = () => {
+    setStatus('all')
+    setPriority('all')
+    setDateFilter('all')
+  }
+
+  const anyFilterActive = status !== 'all' || priority !== 'all' || dateFilter !== 'all'
 
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pb-6 pt-4">
-      <section className="rounded-3xl border bg-card p-4 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm text-muted-foreground">Operación del día</p>
-            <h2 className="text-xl font-semibold">Abrís y ya sabés qué imprimir</h2>
+    <WorkspaceShell
+      eyebrow="Operación del día"
+      title="Pedidos activos"
+      description="Lista compacta para decidir rápido qué imprimir, qué está listo y qué falta cobrar."
+      tone="orders"
+      actions={
+        <Button className="gap-2 rounded-2xl" onClick={() => navigate('/new-order')}>
+          <Plus className="h-4 w-4" />
+          Nuevo pedido
+        </Button>
+      }
+    >
+      <div className="space-y-3 w-full">
+        <div className="rounded-xl bg-gradient-to-br from-sky-50 to-white dark:from-sky-950/30 dark:to-card border-2 border-sky-200/80 dark:border-sky-800/50 px-3 py-2.5 shadow-sm">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <div className="relative flex-1 min-w-[140px] max-w-[220px]">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar..."
+                className="h-8 rounded-xl pl-7 text-xs"
+              />
+            </div>
+
+            <span className="h-5 w-px bg-sky-200/60 dark:bg-sky-800/40 mx-0.5" />
+
+            <FilterChip active={!anyFilterActive} onClick={resetFilters}>
+              Todos
+            </FilterChip>
+            <span className="h-5 w-px bg-sky-200/60 dark:bg-sky-800/40 mx-0.5" />
+
+            <button
+              type="button"
+              onClick={() => setStatus(status === 'pedido' ? 'all' : 'pedido')}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-xs whitespace-nowrap transition-all font-medium',
+                status === 'pedido'
+                  ? 'border-sky-400 bg-sky-100 text-sky-700 dark:border-sky-600 dark:bg-sky-900/50 dark:text-sky-300'
+                  : 'border-transparent bg-sky-100/40 text-sky-600/70 hover:bg-sky-100 hover:text-sky-700 dark:bg-sky-950/20 dark:text-sky-400/70 dark:hover:bg-sky-950/40 dark:hover:text-sky-300'
+              )}
+            >
+              📋 Pend. {pendingCount}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus(status === 'imprimiendo' ? 'all' : 'imprimiendo')}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-xs whitespace-nowrap transition-all font-medium',
+                status === 'imprimiendo'
+                  ? 'border-violet-400 bg-violet-100 text-violet-700 dark:border-violet-600 dark:bg-violet-900/50 dark:text-violet-300'
+                  : 'border-transparent bg-violet-100/40 text-violet-600/70 hover:bg-violet-100 hover:text-violet-700 dark:bg-violet-950/20 dark:text-violet-400/70 dark:hover:bg-violet-950/40 dark:hover:text-violet-300'
+              )}
+            >
+              🖨 Imp. {printingCount}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus(status === 'listo' ? 'all' : 'listo')}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-xs whitespace-nowrap transition-all font-medium',
+                status === 'listo'
+                  ? 'border-amber-400 bg-amber-100 text-amber-700 dark:border-amber-600 dark:bg-amber-900/50 dark:text-amber-300'
+                  : 'border-transparent bg-amber-100/40 text-amber-600/70 hover:bg-amber-100 hover:text-amber-700 dark:bg-amber-950/20 dark:text-amber-400/70 dark:hover:bg-amber-950/40 dark:hover:text-amber-300'
+              )}
+            >
+              ✅ Listos {readyCount}
+            </button>
+
+            <span className="h-5 w-px bg-sky-200/60 dark:bg-sky-800/40 mx-0.5" />
+
+            <button
+              type="button"
+              onClick={() => setPriority(priority === 'urgente' ? 'all' : 'urgente')}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-xs whitespace-nowrap transition-all font-medium',
+                priority === 'urgente'
+                  ? 'border-rose-400 bg-rose-100 text-rose-700 dark:border-rose-600 dark:bg-rose-900/50 dark:text-rose-300'
+                  : 'border-transparent bg-rose-100/40 text-rose-600/70 hover:bg-rose-100 hover:text-rose-700 dark:bg-rose-950/20 dark:text-rose-400/70 dark:hover:bg-rose-950/40 dark:hover:text-rose-300'
+              )}
+            >
+              🔥 Urg. {urgentCount}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDateFilter(dateFilter === 'today' ? 'all' : 'today')}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-xs whitespace-nowrap transition-all font-medium',
+                dateFilter === 'today'
+                  ? 'border-sky-400 bg-sky-100 text-sky-700 dark:border-sky-600 dark:bg-sky-900/50 dark:text-sky-300'
+                  : 'border-transparent bg-sky-100/40 text-sky-600/70 hover:bg-sky-100 hover:text-sky-700 dark:bg-sky-950/20 dark:text-sky-400/70 dark:hover:bg-sky-950/40 dark:hover:text-sky-300'
+              )}
+            >
+              📅 Hoy
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateFilter(dateFilter === 'week' ? 'all' : 'week')}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-xs whitespace-nowrap transition-all font-medium',
+                dateFilter === 'week'
+                  ? 'border-sky-400 bg-sky-100 text-sky-700 dark:border-sky-600 dark:bg-sky-900/50 dark:text-sky-300'
+                  : 'border-transparent bg-sky-100/40 text-sky-600/70 hover:bg-sky-100 hover:text-sky-700 dark:bg-sky-950/20 dark:text-sky-400/70 dark:hover:bg-sky-950/40 dark:hover:text-sky-300'
+              )}
+            >
+              📅 Semana
+            </button>
           </div>
-
-          <Button className="gap-2 rounded-2xl" onClick={() => navigate('/new-order')}>
-            <Plus className="h-4 w-4" />
-            Nuevo
-          </Button>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-          <Metric label="Pendientes" value={pendingCount} accent="bg-sky-50 text-sky-700" />
-          <Metric label="Imprimiendo" value={printingCount} accent="bg-violet-50 text-violet-700" />
-          <Metric label="Listos" value={readyCount} accent="bg-amber-50 text-amber-700" />
-        </div>
-      </section>
+        <section className="space-y-2">
+          {isLoading && <LoadingCard />}
 
-      <section className="space-y-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar por producto, contacto o detalle"
-            className="h-11 rounded-2xl pl-9"
-          />
-        </div>
+          {!isLoading && filteredOrders.length === 0 && (
+            <Card className="rounded-3xl">
+              <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                No hay pedidos para esos filtros.
+              </CardContent>
+            </Card>
+          )}
 
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {statusFilters.map((item) => (
-            <FilterChip key={item.value} active={status === item.value} onClick={() => setStatus(item.value)}>
-              {item.label}
-            </FilterChip>
-          ))}
-        </div>
+          {!isLoading && filteredOrders.length > 0 && (
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y">
+              {filteredOrders.map((order: Order) => {
+                const nextStatus = getNextStatus(order.status)
 
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {priorityFilters.map((item) => (
-            <FilterChip key={item.value} active={priority === item.value} onClick={() => setPriority(item.value)}>
-              {item.label}
-            </FilterChip>
-          ))}
-          <FilterChip active={dateFilter === 'today'} onClick={() => setDateFilter(dateFilter === 'today' ? 'all' : 'today')}>
-            Hoy o vencido
-          </FilterChip>
-          <FilterChip active={dateFilter === 'week'} onClick={() => setDateFilter(dateFilter === 'week' ? 'all' : 'week')}>
-            Esta semana
-          </FilterChip>
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        {isLoading && <LoadingCard />}
-
-        {!isLoading && filteredOrders.length === 0 && (
-          <Card className="rounded-3xl">
-            <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              No hay pedidos para esos filtros.
-            </CardContent>
-          </Card>
-        )}
-
-        {filteredOrders.map((order: Order) => {
-          const nextStatus = getNextStatus(order.status)
-
-          return (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onOpen={() => navigate(`/order/${order.id}`)}
-              onAdvance={() => {
-                if (!nextStatus) return
-                updateOrder.mutate({ id: order.id, status: nextStatus })
-              }}
-              onNotified={() => updateOrder.mutate({ id: order.id, notified: !order.notified })}
-            />
-          )
-        })}
-      </section>
-    </div>
-  )
-}
-
-function Metric({ label, value, accent }: { label: string; value: number; accent: string }) {
-  return (
-    <div className={cn('rounded-2xl px-3 py-3', accent)}>
-      <p className="text-[11px] uppercase tracking-wide opacity-80">{label}</p>
-      <p className="mt-1 text-lg font-semibold">{value}</p>
-    </div>
+                return (
+                  <OrderRow
+                    key={order.id}
+                    order={order}
+                    onOpen={() => navigate(`/order/${order.id}`)}
+                    onStatusChange={(nextStatus) => updateOrder.mutate({ id: order.id, status: nextStatus })}
+                    onAdvance={() => {
+                      if (!nextStatus) return
+                      updateOrder.mutate({ id: order.id, status: nextStatus })
+                    }}
+                    onNotified={() => updateOrder.mutate({ id: order.id, notified: !order.notified })}
+                  />
+                )
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+    </WorkspaceShell>
   )
 }
 
@@ -161,8 +212,8 @@ function FilterChip({ active, children, onClick }: { active: boolean; children: 
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-full border px-4 py-2 text-sm whitespace-nowrap transition-colors',
-        active ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-muted-foreground'
+        'rounded-full border px-3 py-1 text-xs whitespace-nowrap transition-colors',
+        active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-muted'
       )}
     >
       {children}
@@ -178,14 +229,16 @@ function LoadingCard() {
   )
 }
 
-function OrderCard({
+function OrderRow({
   order,
   onOpen,
+  onStatusChange,
   onAdvance,
   onNotified,
 }: {
   order: Order
   onOpen: () => void
+  onStatusChange: (status: StatusType) => void
   onAdvance: () => void
   onNotified: () => void
 }) {
@@ -193,65 +246,80 @@ function OrderCard({
   const nextStatus = getNextStatus(order.status)
   const nextStatusLabel = nextStatus ? ORDER_STATUS[nextStatus].label : 'Sin siguiente paso'
   const advanceDisabled = nextStatus === null
+  const rowTone = getRowTone(order.status)
 
   return (
-    <Card className="overflow-hidden rounded-3xl border-0 shadow-sm ring-1 ring-black/5">
-      <CardContent className="p-0">
-        <button type="button" onClick={onOpen} className="w-full p-4 text-left">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge className={ORDER_STATUS[order.status].color}>{ORDER_STATUS[order.status].label}</Badge>
-                {order.priority === 'urgente' && <Badge variant="destructive">Urgente</Badge>}
-                {order.notified && <Badge className="bg-emerald-100 text-emerald-700">Avisado</Badge>}
-                {urgentByDate && order.status !== 'entregado' && <Badge className="bg-rose-100 text-rose-700">Vence pronto</Badge>}
+    <div className={cn('px-3 py-2 transition-colors', rowTone)}>
+      <div className="grid gap-3 lg:grid-cols-[1.2fr_1.2fr_0.75fr_0.8fr_0.85fr_1fr] lg:items-center">
+        <button type="button" onClick={onOpen} className="min-w-0 text-left">
+          <div className="flex items-start justify-between gap-3 lg:block">
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Badge className={cn(ORDER_STATUS[order.status].color, 'text-[10px] px-2 py-0.5')}>{ORDER_STATUS[order.status].label}</Badge>
+                {order.priority === 'urgente' && <Badge variant="destructive" className="text-[10px] px-2 py-0.5">Urgente</Badge>}
+                 {order.notified && <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200 text-[10px] px-2 py-0.5">Avisado</Badge>}
+                 {urgentByDate && order.status !== 'entregado' && <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-200 text-[10px] px-2 py-0.5">Vence pronto</Badge>}
               </div>
 
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pedido #{order.order_number}</p>
-                <h3 className="truncate text-lg font-semibold">{order.product_name}</h3>
-                <p className="truncate text-sm text-muted-foreground">{order.contact_handle}</p>
+              <div className="space-y-0">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="truncate text-sm font-bold text-foreground">{order.product_name}</h3>
+                  <span className="text-[9px] text-muted-foreground font-medium bg-muted px-1.5 py-0.5 rounded">#{order.order_number}</span>
+                </div>
+                <p className="truncate text-xs font-medium text-muted-foreground">{order.contact_handle}</p>
               </div>
-
-              {order.customization_summary && (
-                <p className="line-clamp-2 text-sm text-foreground/80">{order.customization_summary}</p>
-              )}
             </div>
 
-            <ArrowRight className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
+            <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground lg:hidden" />
           </div>
         </button>
 
-        <div className="grid grid-cols-2 gap-2 border-t bg-muted/40 px-4 py-3 text-sm sm:grid-cols-4">
-          <Meta icon={<CalendarClock className="h-4 w-4" />} label="Entrega" value={order.due_date ? formatDateShort(order.due_date) : 'Sin fecha'} />
-          <Meta icon={<CircleDollarSign className="h-4 w-4" />} label="Seña" value={formatCurrency(order.deposit_amount)} />
+        <div className="space-y-0.5">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground lg:hidden">Personalización</p>
+          <p className="line-clamp-1 text-xs text-foreground">
+            {order.customization_summary || 'Sin detalle cargado'}
+          </p>
+          <p className="text-[10px] text-muted-foreground">{PAYMENT_STATUS[order.payment_status].label}</p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 text-sm lg:contents">
+          <Meta icon={<CalendarClock className="h-3.5 w-3.5" />} label="Entrega" value={order.due_date ? formatDateShort(order.due_date) : 'Sin fecha'} />
+          <Meta icon={<CircleDollarSign className="h-3.5 w-3.5" />} label="Seña" value={formatCurrency(order.deposit_amount)} />
           <Meta label="Saldo" value={formatCurrency(order.balance_amount)} />
-          <Meta label="Cobro" value={PAYMENT_STATUS[order.payment_status].label} />
         </div>
 
-        <div className="grid grid-cols-2 gap-2 px-4 py-3">
-          <Button variant="outline" className="rounded-2xl" onClick={onNotified}>
-            <Bell className="mr-2 h-4 w-4" />
-            {order.notified ? 'Quitar aviso' : 'Marcar avisado'}
-          </Button>
+        <div className="grid gap-1.5 lg:grid-cols-1">
+          <NativeSelect
+            value={order.status}
+            onChange={(event) => onStatusChange(event.target.value as StatusType)}
+            options={Object.entries(ORDER_STATUS).map(([value, item]) => ({ value, label: item.label }))}
+            className="h-9 rounded-2xl text-[11px] uppercase tracking-[0.12em]"
+          />
 
-          <Button className="rounded-2xl" disabled={advanceDisabled} onClick={onAdvance}>
-            {nextStatus ? `Pasar a ${nextStatusLabel}` : nextStatusLabel}
-          </Button>
+          <div className="flex gap-1.5">
+            <Button variant="outline" className="rounded-2xl h-9 text-xs flex-1" onClick={onNotified}>
+              <Bell className="mr-1.5 h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{order.notified ? 'Quitar' : 'Avisar'}</span>
+            </Button>
+
+            <Button className="rounded-2xl h-9 text-xs flex-1" disabled={advanceDisabled} onClick={onAdvance}>
+              {nextStatus ? nextStatusLabel : '—'}
+            </Button>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
 function Meta({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
   return (
-    <div>
-      <p className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
+    <div className="lg:min-w-0">
+      <p className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
         {icon}
         {label}
       </p>
-      <p className="mt-1 font-medium">{value}</p>
+      <p className="text-xs font-medium">{value}</p>
     </div>
   )
 }
@@ -261,4 +329,12 @@ function getNextStatus(status: StatusType): StatusType | null {
   if (status === 'imprimiendo') return 'listo'
   if (status === 'listo') return 'entregado'
   return null
+}
+
+function getRowTone(status: StatusType) {
+  if (status === 'pedido') return 'border-l-4 border-l-sky-400 bg-sky-50/40 hover:bg-sky-100/60 dark:border-l-sky-700 dark:bg-sky-950/15 dark:hover:bg-sky-950/25'
+  if (status === 'imprimiendo') return 'border-l-4 border-l-violet-400 bg-violet-50/40 hover:bg-violet-100/60 dark:border-l-violet-700 dark:bg-violet-950/15 dark:hover:bg-violet-950/25'
+  if (status === 'listo') return 'border-l-4 border-l-amber-400 bg-amber-50/40 hover:bg-amber-100/60 dark:border-l-amber-700 dark:bg-amber-950/15 dark:hover:bg-amber-950/25'
+  if (status === 'entregado') return 'border-l-4 border-l-emerald-400 bg-emerald-50/40 hover:bg-emerald-100/60 dark:border-l-emerald-700 dark:bg-emerald-950/15 dark:hover:bg-emerald-950/25'
+  return 'border-l-4 border-l-slate-300 bg-card hover:bg-muted/45 dark:border-l-slate-700'
 }

@@ -1,14 +1,18 @@
 import { useMemo, useState } from 'react'
-import { useOrders } from '@/hooks/use-orders'
+import { DollarSign, HandCoins, RotateCcw, ShoppingBag, TrendingUp } from 'lucide-react'
+import { useOrders, useUpdateOrder } from '@/hooks/use-orders'
 import { ORDER_STATUS } from '@/lib/constants'
 import type { Order } from '@/types'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { WorkspaceShell } from '@/components/layout/workspace-shell'
 
 export function HistoryList() {
   const { data: orders = [], isLoading } = useOrders('history')
+  const updateOrder = useUpdateOrder()
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [search, setSearch] = useState('')
@@ -27,71 +31,124 @@ export function HistoryList() {
     })
   }, [from, orders, search, to])
 
+  const delivered = useMemo(() => filtered.filter((o: Order) => o.status === 'entregado'), [filtered])
+
+  const kpis = useMemo(() => {
+    const totalSales = delivered.reduce((sum: number, o: Order) => sum + (o.sale_price || 0), 0)
+    const totalDeposits = delivered.reduce((sum: number, o: Order) => sum + (o.deposit_amount || 0), 0)
+    const totalBalance = delivered.reduce((sum: number, o: Order) => sum + (o.balance_amount || 0), 0)
+    const avgTicket = delivered.length > 0 ? Math.round(totalSales / delivered.length) : 0
+    return { count: delivered.length, totalSales, totalDeposits, totalBalance, avgTicket }
+  }, [delivered])
+
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pb-6 pt-4">
-      <section className="rounded-3xl border bg-card p-4 shadow-sm">
-        <p className="text-sm text-muted-foreground">Histórico de ventas</p>
-        <h2 className="text-xl font-semibold">Filtrá por fecha de entrega y revisá rápido</h2>
-
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-          <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+    <WorkspaceShell
+      eyebrow="Histórico"
+      title="Ventas entregadas y canceladas"
+      description="Filtrá por rango de fechas y buscá rápido por producto o contacto."
+      tone="history"
+    >
+      <div className="space-y-3 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <KpiCard icon={<ShoppingBag className="h-4 w-4" />} label="Entregados" value={kpis.count} accent="text-emerald-600 dark:text-emerald-400" />
+          <KpiCard icon={<TrendingUp className="h-4 w-4" />} label="Venta total" value={formatCurrency(kpis.totalSales)} />
+          <KpiCard icon={<HandCoins className="h-4 w-4" />} label="Cobrado" value={formatCurrency(kpis.totalSales - kpis.totalBalance)} accent="text-emerald-600 dark:text-emerald-400" />
+          <KpiCard
+            icon={<DollarSign className="h-4 w-4" />}
+            label={kpis.totalBalance > 0 ? "Por cobrar" : "Por cobrar"}
+            value={formatCurrency(kpis.totalBalance)}
+            accent={kpis.totalBalance > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}
+          />
         </div>
 
-        <div className="mt-3">
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por producto o contacto" />
+        <div className="space-y-2 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 px-3 py-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">Desde</span>
+              <Input type="date" value={from} onChange={(event) => setFrom(event.target.value)} onClick={(e) => (e.target as HTMLInputElement)?.showPicker?.()} className="h-9 rounded-2xl pl-11 text-sm" />
+            </div>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-muted-foreground">Hasta</span>
+              <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} onClick={(e) => (e.target as HTMLInputElement)?.showPicker?.()} className="h-9 rounded-2xl pl-11 text-sm" />
+            </div>
+          </div>
+
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por producto o contacto"
+            className="h-9 rounded-2xl text-sm"
+          />
         </div>
-      </section>
 
-      <section className="space-y-3">
-        {isLoading && (
-          <Card className="rounded-3xl">
-            <CardContent className="p-6 text-sm text-muted-foreground">Cargando histórico...</CardContent>
-          </Card>
-        )}
+        <section className="space-y-2">
+          {isLoading && (
+            <Card className="rounded-2xl">
+              <CardContent className="p-6 text-sm text-muted-foreground">Cargando histórico...</CardContent>
+            </Card>
+          )}
 
-        {!isLoading && filtered.length === 0 && (
-          <Card className="rounded-3xl">
-            <CardContent className="p-6 text-sm text-muted-foreground">No hay ventas en ese rango.</CardContent>
-          </Card>
-        )}
+          {!isLoading && filtered.length === 0 && (
+            <Card className="rounded-2xl">
+              <CardContent className="p-6 text-sm text-muted-foreground">No hay ventas en ese rango.</CardContent>
+            </Card>
+          )}
 
-        {filtered.map((order: Order) => (
-          <Card key={order.id} className="rounded-3xl shadow-sm">
-            <CardContent className="space-y-3 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pedido #{order.order_number}</p>
-                  <h3 className="font-semibold">{order.product_name}</h3>
-                  <p className="text-sm text-muted-foreground">{order.contact_handle}</p>
+          {filtered.map((order: Order) => (
+            <div key={order.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
+              <div className="flex items-center gap-3 min-w-0">
+                <Badge className={cn(ORDER_STATUS[order.status].color, 'text-[10px] px-2 py-0.5 shrink-0')}>{ORDER_STATUS[order.status].label}</Badge>
+                <div className="min-w-0 leading-tight">
+                  <p className="truncate text-sm font-semibold">{order.product_name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{order.contact_handle} · #{order.order_number}</p>
                 </div>
-
-                <Badge className={ORDER_STATUS[order.status].color}>{ORDER_STATUS[order.status].label}</Badge>
               </div>
 
-              {order.customization_summary && (
-                <p className="text-sm text-foreground/80">{order.customization_summary}</p>
-              )}
-
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="hidden sm:flex items-center gap-4 text-xs text-muted-foreground shrink-0">
                 <HistoryMeta label="Total" value={formatCurrency(order.sale_price)} />
-                <HistoryMeta label="Seña" value={formatCurrency(order.deposit_amount)} />
                 <HistoryMeta label="Saldo" value={formatCurrency(order.balance_amount)} />
-                <HistoryMeta label="Entrega" value={formatDate(order.delivered_at ?? order.cancelled_at ?? order.updated_at)} />
+                <HistoryMeta label={order.delivered_at ? "Entregado" : "Actualizado"} value={formatDate(order.delivered_at ?? order.cancelled_at ?? order.updated_at)} />
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </section>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-xl shrink-0 text-xs h-8"
+                onClick={() => updateOrder.mutate({ id: order.id, status: 'pedido', delivered_at: null, cancelled_at: null })}
+              >
+                <RotateCcw className="mr-1.5 h-3 w-3" />
+                Reactivar
+              </Button>
+            </div>
+          ))}
+        </section>
+
+        {kpis.totalBalance > 0 && (
+          <p className="text-[10px] text-muted-foreground italic">* Hay entregados con saldo pendiente de cobro.</p>
+        )}
+      </div>
+    </WorkspaceShell>
+  )
+}
+
+function KpiCard({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string | number; accent?: string }) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card px-3.5 py-3 shadow-sm">
+      <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+        {icon}
+        <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+      </div>
+      <p className={cn('text-lg font-bold tracking-tight', accent || 'text-foreground')}>{value}</p>
     </div>
   )
 }
 
 function HistoryMeta({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 font-medium">{value}</p>
+    <div className="flex items-baseline gap-1">
+      <span className="text-[10px] text-muted-foreground">{label}:</span>
+      <span className="text-xs font-medium">{value}</span>
     </div>
   )
 }
