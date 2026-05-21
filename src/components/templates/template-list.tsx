@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Controller, useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Plus, Sparkles, Star, Trash2 } from 'lucide-react'
-import { useCreateTemplate, useTemplates } from '@/hooks/use-templates'
+import { Edit3, Plus, Sparkles, Star, Trash2 } from 'lucide-react'
+import { useCreateTemplate, useDeleteTemplate, useTemplates, useUpdateTemplate } from '@/hooks/use-templates'
 import { templateFormSchema, type TemplateFormValues } from '@/lib/validations'
 import type { Template, TemplateField, TemplateFieldType } from '@/types'
 import { formatCurrency } from '@/lib/utils'
@@ -100,6 +100,17 @@ function sanitizeTemplateFields(fields: TemplateField[]) {
   }))
 }
 
+function templateToFormValues(template: Template): TemplateFormValues {
+  return {
+    name: template.name,
+    description: template.description,
+    suggested_price: template.suggested_price,
+    fields: template.fields,
+    is_favorite: template.is_favorite,
+    is_active: template.is_active,
+  }
+}
+
 function fieldTypeLabel(type: TemplateFieldType) {
   return fieldTypeOptions.find((option) => option.value === type)?.label ?? type
 }
@@ -107,6 +118,8 @@ function fieldTypeLabel(type: TemplateFieldType) {
 export function TemplateList() {
   const { data: templates = [], isLoading } = useTemplates()
   const [search, setSearch] = useState('')
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
+  const deleteTemplate = useDeleteTemplate()
 
   const filtered = useMemo(() => {
     return templates.filter((template: Template) => [template.name, template.description].join(' ').toLowerCase().includes(search.trim().toLowerCase()))
@@ -114,6 +127,12 @@ export function TemplateList() {
 
   const favorites = filtered.filter((template: Template) => template.is_favorite)
   const others = filtered.filter((template: Template) => !template.is_favorite)
+
+  const handleDelete = (id: string) => {
+    if (confirm('¿Eliminar esta plantilla? No se afectan pedidos existentes.')) {
+      deleteTemplate.mutate(id)
+    }
+  }
 
   return (
     <WorkspaceShell
@@ -125,9 +144,7 @@ export function TemplateList() {
       className="max-w-6xl"
     >
       <div className="space-y-4 w-full">
-        <div className="rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 px-3 py-3">
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar plantilla o idea viral" className="h-11 rounded-2xl" />
-        </div>
+        <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar plantilla o idea viral" className="h-11 rounded-2xl" />
 
         {isLoading && (
           <Card className="rounded-3xl">
@@ -136,24 +153,24 @@ export function TemplateList() {
         )}
 
         {!isLoading && favorites.length > 0 && (
-          <section className="rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 px-3 py-3 space-y-3">
+          <section className="space-y-3">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
               Favoritas
             </div>
             {favorites.map((template: Template) => (
-              <TemplateCard key={template.id} template={template} />
+              <TemplateCard key={template.id} template={template} onEdit={setEditingTemplate} onDelete={handleDelete} />
             ))}
           </section>
         )}
 
-        <section className="rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 px-3 py-3 space-y-3">
+        <section className="space-y-3">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Sparkles className="h-4 w-4" />
             Todas
           </div>
           {others.map((template: Template) => (
-            <TemplateCard key={template.id} template={template} />
+            <TemplateCard key={template.id} template={template} onEdit={setEditingTemplate} onDelete={handleDelete} />
           ))}
           {!isLoading && filtered.length === 0 && (
             <Card className="rounded-3xl">
@@ -161,12 +178,21 @@ export function TemplateList() {
             </Card>
           )}
         </section>
+
+        {editingTemplate && (
+          <TemplateDialog
+            key={editingTemplate.id}
+            editingTemplate={editingTemplate}
+            open={true}
+            onClose={() => setEditingTemplate(null)}
+          />
+        )}
       </div>
     </WorkspaceShell>
   )
 }
 
-function TemplateCard({ template }: { template: Template }) {
+function TemplateCard({ template, onEdit, onDelete }: { template: Template; onEdit: (t: Template) => void; onDelete: (id: string) => void }) {
   return (
     <Card className="rounded-3xl shadow-sm">
       <CardContent className="space-y-3 p-4">
@@ -179,8 +205,16 @@ function TemplateCard({ template }: { template: Template }) {
             {template.description && <p className="mt-1 text-sm text-muted-foreground">{template.description}</p>}
           </div>
 
-          <div className="rounded-2xl bg-muted px-3 py-2 text-sm font-medium">
-            {formatCurrency(template.suggested_price)}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button type="button" onClick={() => onEdit(template)} className="rounded-full border border-border p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <Edit3 className="h-3.5 w-3.5" />
+            </button>
+            <button type="button" onClick={() => onDelete(template.id)} className="rounded-full border border-border p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+            <div className="rounded-2xl bg-muted px-3 py-2 text-sm font-medium ml-1">
+              {formatCurrency(template.suggested_price)}
+            </div>
           </div>
         </div>
 
@@ -196,45 +230,66 @@ function TemplateCard({ template }: { template: Template }) {
   )
 }
 
-function TemplateDialog() {
+function TemplateDialog({ editingTemplate, open: controlledOpen, onClose }: { editingTemplate?: Template | null; open?: boolean; onClose?: () => void }) {
   const createTemplate = useCreateTemplate()
-  const [open, setOpen] = useState(false)
+  const updateTemplate = useUpdateTemplate()
+  const isEditing = Boolean(editingTemplate)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+
   const { control, handleSubmit, register, reset, watch } = useForm<TemplateFormValues>({
     resolver: zodResolver(templateFormSchema) as any,
-    defaultValues: getDefaultTemplateValues(),
+    defaultValues: editingTemplate ? templateToFormValues(editingTemplate) : getDefaultTemplateValues(),
   })
   const { fields, append, remove } = useFieldArray({ control, name: 'fields', keyName: 'formKey' })
 
+  useEffect(() => {
+    if (editingTemplate) {
+      reset(templateToFormValues(editingTemplate))
+    }
+  }, [editingTemplate, reset])
+
   const onSubmit = async (values: TemplateFormValues) => {
-    await createTemplate.mutateAsync({
-      ...values,
-      fields: sanitizeTemplateFields(values.fields),
-    })
-    reset(getDefaultTemplateValues())
-    setOpen(false)
+    if (isEditing && editingTemplate) {
+      await updateTemplate.mutateAsync({
+        id: editingTemplate.id,
+        ...values,
+        fields: sanitizeTemplateFields(values.fields),
+      })
+    } else {
+      await createTemplate.mutateAsync({
+        ...values,
+        fields: sanitizeTemplateFields(values.fields),
+      })
+    }
+    reset(editingTemplate ? templateToFormValues(editingTemplate) : getDefaultTemplateValues())
+    setInternalOpen(false)
+    onClose?.()
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
-
+    if (controlledOpen === undefined) setInternalOpen(nextOpen)
     if (!nextOpen) {
-      reset(getDefaultTemplateValues())
+      reset(editingTemplate ? templateToFormValues(editingTemplate) : getDefaultTemplateValues())
+      onClose?.()
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button className="gap-2 rounded-2xl">
-          <Plus className="h-4 w-4" />
-          Nueva
-        </Button>
-      </DialogTrigger>
+      {!isEditing && (
+        <DialogTrigger asChild>
+          <Button className="gap-2 rounded-2xl">
+            <Plus className="h-4 w-4" />
+            Nueva
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[88svh] max-w-3xl overflow-y-auto rounded-[2rem] border border-border bg-card p-0 shadow-xl">
         <DialogHeader className="space-y-2 border-b border-border bg-card px-6 pb-4 pt-6 pr-14">
-          <DialogTitle>Nueva plantilla</DialogTitle>
+          <DialogTitle>{isEditing ? 'Editar plantilla' : 'Nueva plantilla'}</DialogTitle>
           <DialogDescription>
-            Definí solo los campos que usa ese producto. Podés mezclar colores, nombre, frase, logo, variantes y notas.
+            {isEditing ? 'Actualizá los campos. Los pedidos ya creados no se modifican.' : 'Definí solo los campos que usa ese producto. Podés mezclar colores, nombre, frase, logo, variantes y notas.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -411,8 +466,8 @@ function TemplateDialog() {
             <Button type="button" variant="outline" className="h-11 rounded-2xl" onClick={() => handleOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="h-11 rounded-2xl" disabled={createTemplate.isPending}>
-              {createTemplate.isPending ? 'Guardando...' : 'Guardar plantilla'}
+            <Button type="submit" className="h-11 rounded-2xl" disabled={createTemplate.isPending || updateTemplate.isPending}>
+              {createTemplate.isPending || updateTemplate.isPending ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Guardar plantilla'}
             </Button>
           </div>
         </form>

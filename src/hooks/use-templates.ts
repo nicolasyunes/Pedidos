@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Template } from '@/types'
-import { createTemplate, listTemplates, updateTemplate } from '@/lib/data-store'
+import { createTemplate, deleteTemplate, listTemplates, updateTemplate } from '@/lib/data-store'
 
 export function useTemplates() {
   return useQuery({
@@ -14,6 +14,17 @@ export function useCreateTemplate() {
 
   return useMutation({
     mutationFn: createTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['templates'] })
+    },
+  })
+}
+
+export function useDeleteTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => deleteTemplate(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['templates'] })
     },

@@ -578,3 +578,18 @@ async function updateTemplateRemote(id: string, input: TemplateInput) {
 export async function updateTemplate(id: string, input: TemplateInput) {
   return hasSupabaseConfig ? updateTemplateRemote(id, input) : updateTemplateLocal(id, input)
 }
+
+async function deleteTemplateLocal(id: string) {
+  const templates = readLocal<Template[]>(TEMPLATES_KEY, [])
+  writeLocal(TEMPLATES_KEY, templates.filter((t) => t.id !== id))
+}
+
+async function deleteTemplateRemote(id: string) {
+  if (!supabase) return deleteTemplateLocal(id)
+  const { error } = await (supabase as any).from('templates').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteTemplate(id: string) {
+  return hasSupabaseConfig ? deleteTemplateRemote(id) : deleteTemplateLocal(id)
+}
