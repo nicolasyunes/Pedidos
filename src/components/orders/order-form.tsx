@@ -340,17 +340,84 @@ export function OrderForm() {
               {errors.product_name && <p className="text-xs text-destructive">{errors.product_name.message}</p>}
             </div>
 
+            <div className="space-y-2">
+              <Label>Canal</Label>
+              <Controller
+                control={control}
+                name="channel"
+                render={({ field }) => (
+                  <NativeSelect
+                    value={field.value}
+                    onChange={(event) => field.onChange(event.target.value)}
+                    options={Object.entries(ORDER_CHANNELS).map(([key, item]) => ({ value: key, label: item.label }))}
+                  />
+                )}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Canal</Label>
+                <Label htmlFor="sale_price">Precio de venta</Label>
+                <Input id="sale_price" type="number" className="h-11 rounded-2xl" {...register('sale_price', { valueAsNumber: true })} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="deposit_amount">Seña</Label>
+                <Input id="deposit_amount" type="number" className="h-11 rounded-2xl" {...register('deposit_amount', { valueAsNumber: true })} />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fecha entrega</Label>
+              <Controller
+                control={control}
+                name="due_date"
+                render={({ field }) => (
+                  <Input type="date" value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value)} onClick={(e) => (e.target as HTMLInputElement)?.showPicker?.()} className="h-11 rounded-2xl" />
+                )}
+              />
+            </div>
+
+            <TemplateFieldsEditor
+              template={selectedTemplate}
+              customizations={watch('customizations')}
+              onChange={(customizations) => {
+                setValue('customizations', customizations)
+                setValue('customization_summary', summarizeCustomizations(customizations))
+              }}
+            />
+
+            <div className="space-y-2">
+              <Label htmlFor="customization_summary">Resumen rápido</Label>
+              <Input id="customization_summary" className="h-11 rounded-2xl" placeholder="Color, variante, nombre..." {...register('customization_summary')} />
+            </div>
+          </CardContent>
+        </Card>
+        </div>
+
+        <div className="space-y-4 xl:sticky xl:top-32">
+        <Card className="rounded-3xl border-0 shadow-sm ring-1 ring-black/5">
+          <CardContent className="space-y-4 p-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Resumen del pedido</p>
+            </div>
+
+            <div className="rounded-2xl bg-muted/60 p-3 text-sm">
+              <p className="text-muted-foreground">Saldo pendiente</p>
+              <p className="mt-1 text-lg font-semibold">{formatCurrency(balance)}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Estado</Label>
                 <Controller
                   control={control}
-                  name="channel"
+                  name="status"
                   render={({ field }) => (
                     <NativeSelect
                       value={field.value}
                       onChange={(event) => field.onChange(event.target.value)}
-                      options={Object.entries(ORDER_CHANNELS).map(([key, item]) => ({ value: key, label: item.label }))}
+                      options={Object.entries(ORDER_STATUS).map(([key, item]) => ({ value: key, label: item.label }))}
                     />
                   )}
                 />
@@ -375,83 +442,24 @@ export function OrderForm() {
               </div>
             </div>
 
-            <TemplateFieldsEditor
-              template={selectedTemplate}
-              customizations={watch('customizations')}
-              onChange={(customizations) => {
-                setValue('customizations', customizations)
-                setValue('customization_summary', summarizeCustomizations(customizations))
-              }}
-            />
-
-            <div className="space-y-2">
-              <Label htmlFor="customization_summary">Resumen rápido</Label>
-              <Input id="customization_summary" className="h-11 rounded-2xl" placeholder="Color, variante, nombre..." {...register('customization_summary')} />
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="description">Notas</Label>
               <textarea
                 id="description"
                 {...register('description')}
                 placeholder="Detalle adicional, retiro, observaciones..."
-                className="min-h-24 w-full rounded-2xl border bg-transparent px-3 py-2 text-sm outline-none ring-0"
+                className="min-h-20 w-full rounded-2xl border bg-transparent px-3 py-2 text-sm outline-none ring-0"
               />
             </div>
-          </CardContent>
-        </Card>
-        </div>
 
-        <div className="space-y-4 xl:sticky xl:top-32">
-        <Card className="rounded-3xl border-0 shadow-sm ring-1 ring-black/5">
-          <CardContent className="space-y-4 p-4">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">Cierre rápido</p>
-              <h3 className="mt-1 text-lg font-semibold">Precio, fecha y estado siempre a la vista</h3>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="sale_price">Precio de venta</Label>
-                <Input id="sale_price" type="number" className="h-11 rounded-2xl" {...register('sale_price', { valueAsNumber: true })} />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="deposit_amount">Seña</Label>
-                <Input id="deposit_amount" type="number" className="h-11 rounded-2xl" {...register('deposit_amount', { valueAsNumber: true })} />
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-muted/60 p-3 text-sm">
-              <p className="text-muted-foreground">Saldo pendiente</p>
-              <p className="mt-1 text-lg font-semibold">{formatCurrency(balance)}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="due_date">Fecha entrega</Label>
-                <Controller
-                  control={control}
-                  name="due_date"
-                  render={({ field }) => (
-                    <Input type="date" value={field.value ?? ''} onChange={(event) => field.onChange(event.target.value)} onClick={(e) => (e.target as HTMLInputElement)?.showPicker?.()} className="h-11 rounded-2xl" />
-                  )}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Estado</Label>
-                <Controller
-                  control={control}
-                  name="status"
-                  render={({ field }) => (
-                    <NativeSelect
-                      value={field.value}
-                      onChange={(event) => field.onChange(event.target.value)}
-                      options={Object.entries(ORDER_STATUS).map(([key, item]) => ({ value: key, label: item.label }))}
-                    />
-                  )}
-                />
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-muted-foreground">Resumen rápido</p>
+              <div className="rounded-xl bg-violet-50/60 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-800/30 px-3 py-2.5 text-sm leading-relaxed">
+                {watch('customization_summary') ? (
+                  <span className="text-foreground">{watch('customization_summary')}</span>
+                ) : (
+                  <span className="text-muted-foreground italic">Sin personalización</span>
+                )}
               </div>
             </div>
 
