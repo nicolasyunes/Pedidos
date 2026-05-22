@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Bell, CalendarClock, CircleDollarSign, Plus, Search } from 'lucide-react'
-import { useOrders, useUpdateOrder } from '@/hooks/use-orders'
+import { ArrowRight, Bell, CalendarClock, CircleDollarSign, Plus, Search, Trash2 } from 'lucide-react'
+import { useDeleteOrder, useOrders, useUpdateOrder } from '@/hooks/use-orders'
 import { ORDER_STATUS, PAYMENT_STATUS } from '@/lib/constants'
 import { cn, formatCurrency, formatDateShort, isUrgent } from '@/lib/utils'
 import type { Order, OrderPriority, OrderStatus as StatusType } from '@/types'
@@ -16,6 +16,7 @@ export function OrderList() {
   const navigate = useNavigate()
   const { data: orders = [], isLoading } = useOrders('active')
   const updateOrder = useUpdateOrder()
+  const deleteOrder = useDeleteOrder()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<'all' | StatusType>('all')
   const [priority, setPriority] = useState<'all' | OrderPriority>('all')
@@ -195,6 +196,11 @@ export function OrderList() {
                       updateOrder.mutate({ id: order.id, status: nextStatus })
                     }}
                     onNotified={() => updateOrder.mutate({ id: order.id, notified: !order.notified })}
+                    onDelete={() => {
+                      if (confirm(`¿Eliminar pedido #${order.order_number} (${order.product_name})?`)) {
+                        deleteOrder.mutate(order.id)
+                      }
+                    }}
                   />
                 )
               })}
@@ -235,12 +241,14 @@ function OrderRow({
   onStatusChange,
   onAdvance,
   onNotified,
+  onDelete,
 }: {
   order: Order
   onOpen: () => void
   onStatusChange: (status: StatusType) => void
   onAdvance: () => void
   onNotified: () => void
+  onDelete: () => void
 }) {
   const urgentByDate = isUrgent(order.due_date)
   const nextStatus = getNextStatus(order.status)
@@ -304,6 +312,10 @@ function OrderRow({
 
             <Button className="rounded-2xl h-9 text-xs flex-1" disabled={advanceDisabled} onClick={onAdvance}>
               {nextStatus ? nextStatusLabel : '—'}
+            </Button>
+
+            <Button variant="ghost" className="rounded-2xl h-9 w-9 px-0 text-muted-foreground hover:text-destructive" onClick={onDelete}>
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
