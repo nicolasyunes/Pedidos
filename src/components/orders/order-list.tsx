@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowRight, Bell, CalendarClock, CircleDollarSign, Plus, Search, Trash2 } from 'lucide-react'
+import { ArrowRight, Bell, CalendarClock, CircleDollarSign, Plus, Search, Trash2, Users } from 'lucide-react'
 import { useDeleteOrder, useOrders, useUpdateOrder } from '@/hooks/use-orders'
 import { ORDER_STATUS, PAYMENT_STATUS } from '@/lib/constants'
 import { cn, formatCurrency, formatDateShort, isUrgent } from '@/lib/utils'
@@ -21,6 +21,7 @@ export function OrderList() {
   const [status, setStatus] = useState<'all' | StatusType>('all')
   const [priority, setPriority] = useState<'all' | OrderPriority>('all')
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week'>('all')
+  const [groupByClient, setGroupByClient] = useState(true)
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order: Order) => {
@@ -56,6 +57,20 @@ export function OrderList() {
   }
 
   const anyFilterActive = status !== 'all' || priority !== 'all' || dateFilter !== 'all'
+
+  const groups = useMemo(() => {
+    const map = new Map<string, { orders: Order[]; total: number }>()
+    for (const order of filteredOrders) {
+      const contact = order.contact_handle || '(sin contacto)'
+      const existing = map.get(contact) ?? { orders: [] as Order[], total: 0 }
+      existing.orders.push(order)
+      existing.total += order.sale_price || 0
+      map.set(contact, existing)
+    }
+    return Array.from(map.entries())
+      .map(([contact, data]) => ({ contact, orders: data.orders, total: data.total }))
+      .sort((a, b) => b.orders.length - a.orders.length || a.contact.localeCompare(b.contact))
+  }, [filteredOrders])
 
   return (
     <WorkspaceShell
@@ -166,6 +181,22 @@ export function OrderList() {
             >
               📅 Semana
             </button>
+
+            <span className="h-5 w-px bg-sky-200/60 dark:bg-sky-800/40 mx-0.5" />
+
+            <button
+              type="button"
+              onClick={() => setGroupByClient((prev) => !prev)}
+              className={cn(
+                'rounded-lg border px-2.5 py-1 text-xs whitespace-nowrap transition-all font-medium',
+                groupByClient
+                  ? 'border-sky-400 bg-sky-100 text-sky-700 dark:border-sky-600 dark:bg-sky-900/50 dark:text-sky-300'
+                  : 'border-transparent bg-sky-100/40 text-sky-600/70 hover:bg-sky-100 hover:text-sky-700 dark:bg-sky-950/20 dark:text-sky-400/70 dark:hover:bg-sky-950/40 dark:hover:text-sky-300'
+              )}
+            >
+              <Users className="inline h-3.5 w-3.5 -mt-0.5 mr-1" />
+              {groupByClient ? 'Agrupado' : 'Cliente'}
+            </button>
           </div>
         </div>
 
@@ -182,28 +213,67 @@ export function OrderList() {
 
           {!isLoading && filteredOrders.length > 0 && (
             <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm divide-y">
-              {filteredOrders.map((order: Order) => {
-                const nextStatus = getNextStatus(order.status)
-
-                return (
-                  <OrderRow
-                    key={order.id}
-                    order={order}
-                    onOpen={() => navigate(`/order/${order.id}`)}
-                    onStatusChange={(nextStatus) => updateOrder.mutate({ id: order.id, status: nextStatus })}
-                    onAdvance={() => {
-                      if (!nextStatus) return
-                      updateOrder.mutate({ id: order.id, status: nextStatus })
-                    }}
-                    onNotified={() => updateOrder.mutate({ id: order.id, notified: !order.notified })}
-                    onDelete={() => {
-                      if (confirm(`¿Eliminar pedido #${order.order_number} (${order.product_name})?`)) {
-                        deleteOrder.mutate(order.id)
-                      }
-                    }}
-                  />
-                )
-              })}
+              {groupByClient ? (
+                groups.map((group) => (
+                  <div key={group.contact}>
+                    <div className="flex items-center justify-between gap-2 bg-sky-50/60 dark:bg-sky-950/20 px-3 py-2 border-b border-border/60">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="text-sm font-semibold truncate">{group.contact}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                        <span>{group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}</span>
+                        <span className="font-medium text-foreground">{formatCurrency(group.total)}</span>
+                      </div>
+                    </div>
+                    <div className="divide-y">
+                      {group.orders.map((order: Order) => {
+                        const nextStatus = getNextStatus(order.status)
+                        return (
+                          <OrderRow
+                            key={order.id}
+                            order={order}
+                            onOpen={() => navigate(`/order/${order.id}`)}
+                            onStatusChange={(nextStatus) => updateOrder.mutate({ id: order.id, status: nextStatus })}
+                            onAdvance={() => {
+                              if (!nextStatus) return
+                              updateOrder.mutate({ id: order.id, status: nextStatus })
+                            }}
+                            onNotified={() => updateOrder.mutate({ id: order.id, notified: !order.notified })}
+                            onDelete={() => {
+                              if (confirm(`¿Eliminar pedido #${order.order_number} (${order.product_name})?`)) {
+                                deleteOrder.mutate(order.id)
+                              }
+                            }}
+                          />
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                filteredOrders.map((order: Order) => {
+                  const nextStatus = getNextStatus(order.status)
+                  return (
+                    <OrderRow
+                      key={order.id}
+                      order={order}
+                      onOpen={() => navigate(`/order/${order.id}`)}
+                      onStatusChange={(nextStatus) => updateOrder.mutate({ id: order.id, status: nextStatus })}
+                      onAdvance={() => {
+                        if (!nextStatus) return
+                        updateOrder.mutate({ id: order.id, status: nextStatus })
+                      }}
+                      onNotified={() => updateOrder.mutate({ id: order.id, notified: !order.notified })}
+                      onDelete={() => {
+                        if (confirm(`¿Eliminar pedido #${order.order_number} (${order.product_name})?`)) {
+                          deleteOrder.mutate(order.id)
+                        }
+                      }}
+                    />
+                  )
+                })
+              )}
             </div>
           )}
         </section>

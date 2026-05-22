@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Check, CopyPlus, Plus, Sparkles, Wand2, X } from 'lucide-react'
+import { Check, ChevronRight, CopyPlus, Plus, Sparkles, Wand2, X } from 'lucide-react'
 import { useCreateOrder, useOrder, useOrders, useUpdateOrder } from '@/hooks/use-orders'
 import { useTemplates } from '@/hooks/use-templates'
 import { ORDER_CHANNELS, ORDER_STATUS, PAYMENT_METHODS } from '@/lib/constants'
@@ -36,6 +36,9 @@ export function OrderForm() {
   const createOrder = useCreateOrder()
   const updateOrder = useUpdateOrder()
   const [loading, setLoading] = useState(false)
+  const [savedContact, setSavedContact] = useState<string | null>(null)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const contactRef = useRef<HTMLDivElement>(null)
 
   const duplicateSource = useMemo(
     () => allOrders.find((order: Order) => order.id === duplicateId) ?? null,
@@ -63,6 +66,24 @@ export function OrderForm() {
       customizations: [],
     },
   })
+
+  const contactValue = watch('contact_handle')
+
+  const contactSuggestions = useMemo(() => {
+    if (!contactValue || editing) return []
+    const trimmed = contactValue.toLowerCase().trim()
+    const seen = new Set<string>()
+    const all: { contact: string; channel: string; count: number }[] = []
+    for (const order of allOrders) {
+      const c = order.contact_handle?.trim()
+      if (!c || seen.has(c)) continue
+      if (c.toLowerCase().includes(trimmed)) {
+        seen.add(c)
+        all.push({ contact: c, channel: order.channel, count: 0 })
+      }
+    }
+    return all.sort((a, b) => a.contact.localeCompare(b.contact)).slice(0, 8)
+  }, [allOrders, contactValue, editing])
 
   const mode = watch('mode')
   const selectedTemplateId = watch('template_id')
@@ -126,6 +147,34 @@ export function OrderForm() {
     }
   }, [currentOrder, duplicateSource, editing, reset, selectedTemplate, setValue])
 
+  useEffect(() => {
+    if (editing) return
+    const contactParam = searchParams.get('contact')
+    const channelParam = searchParams.get('channel')
+    if (contactParam) {
+      setValue('contact_handle', contactParam)
+      if (channelParam && (Object.keys(ORDER_CHANNELS) as string[]).includes(channelParam)) {
+        setValue('channel', channelParam as Order['channel'])
+      }
+    }
+  }, [editing, searchParams, setValue])
+
+  useEffect(() => {
+    const handler = (event: MouseEvent) => {
+      if (contactRef.current && !contactRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const selectContact = (contact: string, channel: string) => {
+    setValue('contact_handle', contact)
+    setValue('channel', channel as Order['channel'])
+    setShowSuggestions(false)
+  }
+
   const onSubmit = async (data: OrderFormValues) => {
     setLoading(true)
 
@@ -149,11 +198,14 @@ export function OrderForm() {
 
       if (editing && id) {
         await updateOrder.mutateAsync({ id, ...payload })
+        navigate('/')
       } else {
         await createOrder.mutateAsync(payload)
+        setSavedContact(data.contact_handle)
+        reset(undefined, { keepValues: false })
+        setTimeout(() => setValue('contact_handle', data.contact_handle), 0)
+        setValue('channel', data.channel)
       }
-
-      navigate('/')
     } finally {
       setLoading(false)
     }
@@ -256,9 +308,26 @@ export function OrderForm() {
 
         <div className="rounded-xl bg-violet-50/50 dark:bg-violet-950/20 border border-violet-200/50 dark:border-violet-800/30 p-4 space-y-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Datos del cliente</p>
-          <div className="space-y-2">
+          <div className="space-y-2" ref={contactRef}>
             <Label htmlFor="contact_handle">Usuario / contacto</Label>
-            <Input id="contact_handle" className="h-11 rounded-2xl" placeholder="@cliente, nombre o WhatsApp" {...register('contact_handle')} />
+            <div className="relative">
+              <Input id="contact_handle" className="h-11 rounded-2xl" placeholder="@cliente, nombre o WhatsApp" {...register('contact_handle')} onFocus={() => setShowSuggestions(true)} autoComplete="off" />
+              {showSuggestions && contactSuggestions.length > 0 && (
+                <div className="absolute z-50 top-full mt-1 left-0 right-0 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+                  {contactSuggestions.map((s) => (
+                    <button
+                      key={s.contact}
+                      type="button"
+                      className="w-full px-3 py-2.5 text-left text-sm hover:bg-muted transition-colors flex items-center justify-between"
+                      onClick={() => selectContact(s.contact, s.channel)}
+                    >
+                      <span className="font-medium">{s.contact}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase">{s.channel}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             {errors.contact_handle && <p className="text-xs text-destructive">{errors.contact_handle.message}</p>}
           </div>
         </div>
@@ -403,6 +472,24 @@ export function OrderForm() {
             </div>
           </CardContent>
         </Card>
+
+        {savedContact && !editing && (
+          <div className="rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/60 dark:border-emerald-800/30 p-3 flex items-center justify-between gap-2">
+            <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium truncate">✅ Pedido guardado</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl h-8 text-xs shrink-0 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300"
+              onClick={() => {
+                navigate(`/new-order?contact=${encodeURIComponent(savedContact)}&channel=${watch('channel')}`)
+              }}
+            >
+              Otro para {savedContact}
+              <ChevronRight className="ml-1 h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 pb-2">
           <Button
