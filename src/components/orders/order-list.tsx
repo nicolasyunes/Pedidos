@@ -304,17 +304,17 @@ function OrderRow({
             className="h-9 rounded-2xl text-[11px] uppercase tracking-[0.12em]"
           />
 
-          <div className="flex gap-1.5">
-            <Button variant="outline" className="rounded-2xl h-9 text-xs flex-1" onClick={onNotified}>
-              <Bell className="mr-1.5 h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{order.notified ? 'Quitar' : 'Avisar'}</span>
+          <div className="grid grid-cols-[1fr_1fr_auto] gap-1.5">
+            <Button variant="outline" className="rounded-2xl h-9 text-[11px] px-2" onClick={onNotified} title={order.notified ? 'Quitar aviso' : 'Avisar'}>
+              <Bell className="mr-1 h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{order.notified ? 'Quitar' : 'Avisar'}</span>
             </Button>
 
-            <Button className="rounded-2xl h-9 text-xs flex-1" disabled={advanceDisabled} onClick={onAdvance}>
+            <Button className="rounded-2xl h-9 text-[11px] px-2 truncate" disabled={advanceDisabled} onClick={onAdvance}>
               {nextStatus ? nextStatusLabel : '—'}
             </Button>
 
-            <Button variant="ghost" className="rounded-2xl h-9 w-9 px-0 text-muted-foreground hover:text-destructive" onClick={onDelete}>
+            <Button variant="ghost" size="icon" className="rounded-2xl h-9 w-9 text-muted-foreground hover:text-destructive" onClick={onDelete}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
