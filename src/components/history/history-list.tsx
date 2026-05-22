@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { DollarSign, HandCoins, RotateCcw, ShoppingBag, TrendingUp } from 'lucide-react'
 import { useOrders, useUpdateOrder } from '@/hooks/use-orders'
-import { ORDER_STATUS } from '@/lib/constants'
+import { ORDER_STATUS, PAYMENT_STATUS } from '@/lib/constants'
 import type { Order } from '@/types'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -38,7 +38,8 @@ export function HistoryList() {
     const totalDeposits = delivered.reduce((sum: number, o: Order) => sum + (o.deposit_amount || 0), 0)
     const totalBalance = delivered.reduce((sum: number, o: Order) => sum + (o.balance_amount || 0), 0)
     const avgTicket = delivered.length > 0 ? Math.round(totalSales / delivered.length) : 0
-    return { count: delivered.length, totalSales, totalDeposits, totalBalance, avgTicket }
+    const pctCollected = totalSales > 0 ? Math.round((totalDeposits / totalSales) * 100) : 0
+    return { count: delivered.length, totalSales, totalDeposits, totalBalance, avgTicket, pctCollected }
   }, [delivered])
 
   return (
@@ -52,7 +53,13 @@ export function HistoryList() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <KpiCard icon={<ShoppingBag className="h-4 w-4" />} label="Entregados" value={kpis.count} accent="text-emerald-600 dark:text-emerald-400" />
           <KpiCard icon={<TrendingUp className="h-4 w-4" />} label="Venta total" value={formatCurrency(kpis.totalSales)} />
-          <KpiCard icon={<HandCoins className="h-4 w-4" />} label="Cobrado" value={formatCurrency(kpis.totalSales - kpis.totalBalance)} accent="text-emerald-600 dark:text-emerald-400" />
+          <KpiCard
+            icon={<HandCoins className="h-4 w-4" />}
+            label="Cobrado"
+            value={`${formatCurrency(kpis.totalDeposits)}`}
+            accent="text-emerald-600 dark:text-emerald-400"
+            subtitle={kpis.totalSales > 0 ? `${kpis.pctCollected}% cobrado` : undefined}
+          />
           <KpiCard
             icon={<DollarSign className="h-4 w-4" />}
             label={kpis.totalBalance > 0 ? "Por cobrar" : "Por cobrar"}
@@ -96,8 +103,9 @@ export function HistoryList() {
 
           {filtered.map((order: Order) => (
             <div key={order.id} className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm">
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
                 <Badge className={cn(ORDER_STATUS[order.status].color, 'text-[10px] px-2 py-0.5 shrink-0')}>{ORDER_STATUS[order.status].label}</Badge>
+                <Badge className={cn(PAYMENT_STATUS[order.payment_status].color, 'text-[10px] px-2 py-0.5 shrink-0')}>{PAYMENT_STATUS[order.payment_status].label}</Badge>
                 <div className="min-w-0 leading-tight">
                   <p className="truncate text-sm font-semibold">{order.product_name}</p>
                   <p className="truncate text-xs text-muted-foreground">{order.contact_handle} · #{order.order_number}</p>
@@ -106,6 +114,7 @@ export function HistoryList() {
 
               <div className="hidden sm:flex items-center gap-4 text-xs text-muted-foreground shrink-0">
                 <HistoryMeta label="Total" value={formatCurrency(order.sale_price)} />
+                <HistoryMeta label="Seña" value={formatCurrency(order.deposit_amount)} />
                 <HistoryMeta label="Saldo" value={formatCurrency(order.balance_amount)} />
                 <HistoryMeta label={order.delivered_at ? "Entregado" : "Actualizado"} value={formatDate(order.delivered_at ?? order.cancelled_at ?? order.updated_at)} />
               </div>
@@ -132,7 +141,7 @@ export function HistoryList() {
   )
 }
 
-function KpiCard({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string | number; accent?: string }) {
+function KpiCard({ icon, label, value, accent, subtitle }: { icon: React.ReactNode; label: string; value: string | number; accent?: string; subtitle?: string }) {
   return (
     <div className="rounded-xl border border-border/60 bg-card px-3.5 py-3 shadow-sm">
       <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
@@ -140,6 +149,7 @@ function KpiCard({ icon, label, value, accent }: { icon: React.ReactNode; label:
         <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
       </div>
       <p className={cn('text-lg font-bold tracking-tight', accent || 'text-foreground')}>{value}</p>
+      {subtitle && <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>}
     </div>
   )
 }
