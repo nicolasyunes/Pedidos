@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { Bell, Copy, Pencil, Trash2 } from 'lucide-react'
 import { useDeleteOrder, useOrder, useUpdateOrder } from '@/hooks/use-orders'
 import { ORDER_CHANNELS, ORDER_STATUS, PAYMENT_METHODS, PAYMENT_STATUS } from '@/lib/constants'
@@ -43,6 +44,7 @@ export function OrderDetail() {
   const handleDelete = async () => {
     if (confirm('¿Estás seguro de eliminar este pedido?')) {
       await deleteOrder.mutateAsync(order.id)
+      toast.success('Pedido eliminado')
       navigate('/')
     }
   }
@@ -142,11 +144,17 @@ export function OrderDetail() {
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Acciones</p>
         <div className="grid grid-cols-2 gap-2">
           {nextStatus && (
-            <Button className="w-full col-span-2" onClick={() => updateOrder.mutate({ id: order.id, status: nextStatus })}>
+            <Button className="w-full col-span-2" onClick={() => updateOrder.mutate(
+              { id: order.id, status: nextStatus },
+              { onSuccess: () => toast.success(`Pedido movido a ${ORDER_STATUS[nextStatus].label}`) }
+            )}>
               Mover a {ORDER_STATUS[nextStatus].label}
             </Button>
           )}
-          <Button variant="outline" className="w-full" onClick={() => updateOrder.mutate({ id: order.id, notified: !order.notified })}>
+          <Button variant="outline" className="w-full" onClick={() => updateOrder.mutate(
+            { id: order.id, notified: !order.notified },
+            { onSuccess: () => toast.success(order.notified ? 'Aviso quitado' : 'Aviso marcado') }
+          )}>
             <Bell className="mr-2 h-4 w-4" />
             {order.notified ? 'Quitar aviso' : 'Avisar'}
           </Button>

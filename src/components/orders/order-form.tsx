@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
 import { Check, ChevronRight, CopyPlus, Plus, Sparkles, Wand2, X } from 'lucide-react'
 import { useCreateOrder, useOrder, useOrders, useUpdateOrder } from '@/hooks/use-orders'
 import { useTemplates } from '@/hooks/use-templates'
@@ -198,14 +199,18 @@ export function OrderForm() {
 
       if (editing && id) {
         await updateOrder.mutateAsync({ id, ...payload })
+        toast.success('Cambios guardados')
         navigate('/')
       } else {
         await createOrder.mutateAsync(payload)
+        toast.success('Pedido guardado')
         setSavedContact(data.contact_handle)
         reset(undefined, { keepValues: false })
         setTimeout(() => setValue('contact_handle', data.contact_handle), 0)
         setValue('channel', data.channel)
       }
+    } catch {
+      toast.error('Error al guardar el pedido')
     } finally {
       setLoading(false)
     }

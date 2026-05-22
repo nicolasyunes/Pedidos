@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { ArrowRight, Bell, CalendarClock, CircleDollarSign, Plus, Search, Trash2, Users } from 'lucide-react'
 import { useDeleteOrder, useOrders, useUpdateOrder } from '@/hooks/use-orders'
 import { ORDER_STATUS, PAYMENT_STATUS } from '@/lib/constants'
@@ -234,15 +235,24 @@ export function OrderList() {
                             key={order.id}
                             order={order}
                             onOpen={() => navigate(`/order/${order.id}`)}
-                            onStatusChange={(nextStatus) => updateOrder.mutate({ id: order.id, status: nextStatus })}
+                            onStatusChange={(s) => updateOrder.mutate(
+                              { id: order.id, status: s },
+                              { onSuccess: () => toast.success(`Pedido movido a ${ORDER_STATUS[s].label}`) }
+                            )}
                             onAdvance={() => {
                               if (!nextStatus) return
-                              updateOrder.mutate({ id: order.id, status: nextStatus })
+                              updateOrder.mutate(
+                                { id: order.id, status: nextStatus },
+                                { onSuccess: () => toast.success(`Pedido movido a ${ORDER_STATUS[nextStatus].label}`) }
+                              )
                             }}
-                            onNotified={() => updateOrder.mutate({ id: order.id, notified: !order.notified })}
+                            onNotified={() => updateOrder.mutate(
+                              { id: order.id, notified: !order.notified },
+                              { onSuccess: () => toast.success(order.notified ? 'Aviso quitado' : 'Aviso marcado') }
+                            )}
                             onDelete={() => {
                               if (confirm(`¿Eliminar pedido #${order.order_number} (${order.product_name})?`)) {
-                                deleteOrder.mutate(order.id)
+                                deleteOrder.mutate(order.id, { onSuccess: () => toast.success('Pedido eliminado') })
                               }
                             }}
                           />
@@ -259,15 +269,24 @@ export function OrderList() {
                       key={order.id}
                       order={order}
                       onOpen={() => navigate(`/order/${order.id}`)}
-                      onStatusChange={(nextStatus) => updateOrder.mutate({ id: order.id, status: nextStatus })}
+                      onStatusChange={(s) => updateOrder.mutate(
+                        { id: order.id, status: s },
+                        { onSuccess: () => toast.success(`Pedido movido a ${ORDER_STATUS[s].label}`) }
+                      )}
                       onAdvance={() => {
                         if (!nextStatus) return
-                        updateOrder.mutate({ id: order.id, status: nextStatus })
+                        updateOrder.mutate(
+                          { id: order.id, status: nextStatus },
+                          { onSuccess: () => toast.success(`Pedido movido a ${ORDER_STATUS[nextStatus].label}`) }
+                        )
                       }}
-                      onNotified={() => updateOrder.mutate({ id: order.id, notified: !order.notified })}
+                      onNotified={() => updateOrder.mutate(
+                        { id: order.id, notified: !order.notified },
+                        { onSuccess: () => toast.success(order.notified ? 'Aviso quitado' : 'Aviso marcado') }
+                      )}
                       onDelete={() => {
                         if (confirm(`¿Eliminar pedido #${order.order_number} (${order.product_name})?`)) {
-                          deleteOrder.mutate(order.id)
+                          deleteOrder.mutate(order.id, { onSuccess: () => toast.success('Pedido eliminado') })
                         }
                       }}
                     />

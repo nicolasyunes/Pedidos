@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { toast } from 'sonner'
 import { DollarSign, HandCoins, RotateCcw, ShoppingBag, TrendingUp } from 'lucide-react'
 import { useOrders, useUpdateOrder } from '@/hooks/use-orders'
 import { ORDER_STATUS, PAYMENT_STATUS } from '@/lib/constants'
@@ -124,7 +125,10 @@ export function HistoryList() {
                 variant="outline"
                 size="sm"
                 className="rounded-xl shrink-0 text-xs h-8"
-                onClick={() => updateOrder.mutate({ id: order.id, status: 'pedido', delivered_at: null, cancelled_at: null })}
+                onClick={() => updateOrder.mutate(
+                  { id: order.id, status: 'pedido', delivered_at: null, cancelled_at: null },
+                  { onSuccess: () => toast.success('Pedido reactivado') }
+                )}
               >
                 <RotateCcw className="mr-1.5 h-3 w-3" />
                 Reactivar

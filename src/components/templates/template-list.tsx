@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Controller, useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { toast } from 'sonner'
 import { Edit3, Plus, Sparkles, Star, Trash2 } from 'lucide-react'
 import { useCreateTemplate, useDeleteTemplate, useTemplates, useUpdateTemplate } from '@/hooks/use-templates'
 import { templateFormSchema, type TemplateFormValues } from '@/lib/validations'
@@ -130,7 +131,7 @@ export function TemplateList() {
 
   const handleDelete = (id: string) => {
     if (confirm('¿Eliminar esta plantilla? No se afectan pedidos existentes.')) {
-      deleteTemplate.mutate(id)
+      deleteTemplate.mutate(id, { onSuccess: () => toast.success('Plantilla eliminada') })
     }
   }
 
@@ -250,21 +251,27 @@ function TemplateDialog({ editingTemplate, open: controlledOpen, onClose }: { ed
   }, [editingTemplate, reset])
 
   const onSubmit = async (values: TemplateFormValues) => {
-    if (isEditing && editingTemplate) {
-      await updateTemplate.mutateAsync({
-        id: editingTemplate.id,
-        ...values,
-        fields: sanitizeTemplateFields(values.fields),
-      })
-    } else {
-      await createTemplate.mutateAsync({
-        ...values,
-        fields: sanitizeTemplateFields(values.fields),
-      })
+    try {
+      if (isEditing && editingTemplate) {
+        await updateTemplate.mutateAsync({
+          id: editingTemplate.id,
+          ...values,
+          fields: sanitizeTemplateFields(values.fields),
+        })
+        toast.success('Plantilla actualizada')
+      } else {
+        await createTemplate.mutateAsync({
+          ...values,
+          fields: sanitizeTemplateFields(values.fields),
+        })
+        toast.success('Plantilla creada')
+      }
+      reset(editingTemplate ? templateToFormValues(editingTemplate) : getDefaultTemplateValues())
+      setInternalOpen(false)
+      onClose?.()
+    } catch {
+      toast.error('Error al guardar la plantilla')
     }
-    reset(editingTemplate ? templateToFormValues(editingTemplate) : getDefaultTemplateValues())
-    setInternalOpen(false)
-    onClose?.()
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
