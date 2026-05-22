@@ -1,11 +1,11 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Bell, Copy, Pencil, Trash2 } from 'lucide-react'
+import { Bell, Copy, Pencil, Trash2 } from 'lucide-react'
 import { useDeleteOrder, useOrder, useUpdateOrder } from '@/hooks/use-orders'
 import { ORDER_CHANNELS, ORDER_STATUS, PAYMENT_METHODS, PAYMENT_STATUS } from '@/lib/constants'
 import { formatCurrency, formatDate, isUrgent } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { WorkspaceShell } from '@/components/layout/workspace-shell'
 
 export function OrderDetail() {
   const { id } = useParams<{ id: string }>()
@@ -48,149 +48,129 @@ export function OrderDetail() {
   }
 
   return (
-    <div className="flex h-[calc(100svh-7rem)] flex-col">
-      <div className="flex items-center gap-2 border-b px-4 py-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="min-w-0">
-          <h2 className="truncate text-lg font-semibold">{order.product_name}</h2>
-          <p className="truncate text-sm text-muted-foreground">{order.contact_handle}</p>
+    <WorkspaceShell
+      eyebrow={`#${order.order_number} · ${ORDER_CHANNELS[order.channel].label}`}
+      title={order.product_name}
+      description={order.contact_handle}
+      tone="orders"
+    >
+      <div className="rounded-xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200/50 dark:border-sky-800/30 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge className={ORDER_STATUS[order.status].color}>{ORDER_STATUS[order.status].label}</Badge>
+          <Badge className={PAYMENT_STATUS[order.payment_status].color}>{PAYMENT_STATUS[order.payment_status].label}</Badge>
+          {order.priority === 'urgente' && <Badge variant="destructive">Urgente</Badge>}
+          {order.notified && <Badge className="bg-emerald-100 text-emerald-700">Avisado</Badge>}
+          {urgent && order.status !== 'entregado' && <Badge variant="destructive">Vence pronto</Badge>}
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        <div className="rounded-xl bg-muted/50 border border-border/70 px-3 py-2">
-          <div className="flex flex-wrap items-center gap-2">
-          <Badge className={ORDER_STATUS[order.status].color}>{ORDER_STATUS[order.status].label}</Badge>
-          {order.priority === 'urgente' && <Badge variant="destructive">Urgente</Badge>}
-          <Badge className={PAYMENT_STATUS[order.payment_status].color}>{PAYMENT_STATUS[order.payment_status].label}</Badge>
-          {order.notified && <Badge className="bg-emerald-100 text-emerald-700">Avisado</Badge>}
-          {urgent && order.status !== 'entregado' && <Badge variant="destructive">Vence pronto</Badge>}
+      <div className="space-y-3">
+        <div className="rounded-xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200/50 dark:border-sky-800/30 p-4 space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Detalle del pedido</p>
+
+          {order.customization_summary && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Personalización</p>
+              <p className="mt-0.5 text-sm">{order.customization_summary}</p>
+            </div>
+          )}
+
+          {order.description && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Notas</p>
+              <p className="mt-0.5 text-sm">{order.description}</p>
+            </div>
+          )}
+
+          {order.customizations.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Campos</p>
+              <div className="flex flex-wrap gap-2">
+                {order.customizations
+                  .filter((c) => c.value_text?.trim() && !(c.field_type === 'boolean' && c.value_text === 'false'))
+                  .map((c) => (
+                    <Badge key={c.id} variant="outline" className="rounded-full border-border/60 bg-background/80 px-3 py-1">
+                      {c.field_type === 'boolean' ? c.field_name : `${c.field_name}: ${formatCustomizationValue(c.value_text ?? '', c.field_type)}`}
+                    </Badge>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200/50 dark:border-sky-800/30 p-4 space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Información financiera</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-card px-3 py-2 border border-border/50">
+              <p className="text-[10px] text-muted-foreground">Total</p>
+              <p className="text-base font-bold">{formatCurrency(order.sale_price)}</p>
+            </div>
+            <div className="rounded-xl bg-card px-3 py-2 border border-border/50">
+              <p className="text-[10px] text-muted-foreground">Seña</p>
+              <p className="text-base font-bold">{formatCurrency(order.deposit_amount)}</p>
+            </div>
+            <div className="rounded-xl bg-card px-3 py-2 border border-border/50">
+              <p className="text-[10px] text-muted-foreground">Saldo</p>
+              <p className="text-base font-bold">{formatCurrency(order.balance_amount)}</p>
+            </div>
+            <div className="rounded-xl bg-card px-3 py-2 border border-border/50">
+              <p className="text-[10px] text-muted-foreground">Pago final</p>
+              <p className="text-base font-bold">{order.final_payment_method ? PAYMENT_METHODS[order.final_payment_method] : '—'}</p>
+            </div>
           </div>
         </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Resumen del pedido</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Producto</p>
-              <p className="mt-1 font-medium">{order.product_name}</p>
-            </div>
-
-            {order.customization_summary && (
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Personalización</p>
-                <p className="mt-1 text-sm">{order.customization_summary}</p>
-              </div>
+        <div className="rounded-xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200/50 dark:border-sky-800/30 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+            <span className="text-muted-foreground">Entrega:</span>
+            <span className={urgent && order.status !== 'entregado' ? 'font-semibold text-destructive' : 'font-medium'}>
+              {formatDate(order.due_date)}
+            </span>
+            <span className="text-muted-foreground">Creado:</span>
+            <span className="font-medium">{formatDate(order.created_at)}</span>
+            {order.delivered_at && (
+              <>
+                <span className="text-muted-foreground">Entregado:</span>
+                <span className="font-medium">{formatDate(order.delivered_at)}</span>
+              </>
             )}
+          </div>
+        </div>
+      </div>
 
-            {order.description && (
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Notas</p>
-                <p className="mt-1 text-sm">{order.description}</p>
-              </div>
-            )}
-
-            {order.customizations.length > 0 && (
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Campos</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {order.customizations
-                    .filter((customization) => customization.value_text?.trim() && !(customization.field_type === 'boolean' && customization.value_text === 'false'))
-                    .map((customization) => (
-                      <Badge key={customization.id} variant="outline" className="rounded-full border-border/60 bg-background/80 px-3 py-1">
-                        {customization.field_type === 'boolean'
-                          ? customization.field_name
-                          : `${customization.field_name}: ${formatCustomizationValue(customization.value_text ?? '', customization.field_type)}`}
-                      </Badge>
-                    ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="space-y-3 p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Canal</span>
-              <span className="text-sm">{ORDER_CHANNELS[order.channel].label}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Contacto</span>
-              <span className="text-sm font-medium">{order.contact_handle}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Entrega</span>
-              <span className={`text-sm font-medium ${urgent ? 'text-destructive' : ''}`}>{formatDate(order.due_date)}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Total</span>
-              <span className="text-sm font-semibold">{formatCurrency(order.sale_price)}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Seña</span>
-              <span className="text-sm">{formatCurrency(order.deposit_amount)}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Saldo</span>
-              <span className="text-sm font-medium">{formatCurrency(order.balance_amount)}</span>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Pago final</span>
-              <span className="text-sm">{order.final_payment_method ? PAYMENT_METHODS[order.final_payment_method] : 'Sin registrar'}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="rounded-xl bg-muted/50 border border-border/70 p-3 space-y-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Acciones</p>
+      <div className="rounded-xl bg-sky-50/50 dark:bg-sky-950/20 border border-sky-200/50 dark:border-sky-800/30 p-3 space-y-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Acciones</p>
+        <div className="grid grid-cols-2 gap-2">
           {nextStatus && (
-            <Button className="w-full" onClick={() => updateOrder.mutate({ id: order.id, status: nextStatus })}>
+            <Button className="w-full col-span-2" onClick={() => updateOrder.mutate({ id: order.id, status: nextStatus })}>
               Mover a {ORDER_STATUS[nextStatus].label}
             </Button>
           )}
-
           <Button variant="outline" className="w-full" onClick={() => updateOrder.mutate({ id: order.id, notified: !order.notified })}>
             <Bell className="mr-2 h-4 w-4" />
-            {order.notified ? 'Quitar aviso' : 'Marcar avisado'}
+            {order.notified ? 'Quitar aviso' : 'Avisar'}
           </Button>
-
           <Button variant="outline" className="w-full" onClick={() => navigate(`/new-order?duplicate=${order.id}`)}>
             <Copy className="mr-2 h-4 w-4" />
-            Duplicar pedido
+            Duplicar
           </Button>
-
           <Button variant="outline" className="w-full" onClick={() => navigate(`/order/${order.id}/edit`)}>
             <Pencil className="mr-2 h-4 w-4" />
-            Editar pedido
+            Editar
           </Button>
-
           {order.status === 'pedido' && (
-            <Button variant="destructive" className="w-full" onClick={handleDelete}>
+            <Button variant="destructive" className="w-full col-span-2" onClick={handleDelete}>
               <Trash2 className="mr-2 h-4 w-4" />
               Eliminar pedido
             </Button>
           )}
         </div>
       </div>
-    </div>
+    </WorkspaceShell>
   )
 }
 
 function formatCustomizationValue(value: string, fieldType: string) {
-  if (fieldType === 'boolean') {
-    return value === 'true' ? 'Sí' : value === 'false' ? 'No' : value
-  }
-
+  if (fieldType === 'boolean') return value === 'true' ? 'Sí' : value === 'false' ? 'No' : value
   return value
 }
