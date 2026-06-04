@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { hasSupabaseConfig } from '@/lib/supabase/client'
 
 export function WorkspaceShell({
   eyebrow,
@@ -32,7 +33,15 @@ export function WorkspaceShell({
         toneStyles[tone]
       )}>
         <div className="space-y-0.5">
-          {eyebrow && <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{eyebrow}</p>}
+          <div className="flex items-center gap-2">
+            {eyebrow && <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{eyebrow}</p>}
+            <span className={cn(
+              'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium leading-none',
+              hasSupabaseConfig ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+            )}>
+              {hasSupabaseConfig ? '☁️ Cloud' : '💻 Local'}
+            </span>
+          </div>
           <h2 className="text-xl font-semibold tracking-tight md:text-2xl">{title}</h2>
           {description && <p className="max-w-xl text-sm text-muted-foreground">{description}</p>}
         </div>
